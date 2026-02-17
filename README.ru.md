@@ -1,5 +1,7 @@
 # reminders-mcp
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 MCP-сервер для работы с Apple Reminders на macOS. Написан на Swift, использует EventKit.
 
 ## Почему этот сервер
