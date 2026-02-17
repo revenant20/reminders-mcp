@@ -15,26 +15,13 @@
 @preconcurrency import EventKit
 import Foundation
 import MCP
+import RemindersMCPCore
 
 extension EKReminder: @unchecked @retroactive Sendable {}
 
 // MARK: - EventKit Store
 
 nonisolated(unsafe) let store = EKEventStore()
-
-let iso8601DateOnly: DateFormatter = {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd"
-    f.locale = Locale(identifier: "en_US_POSIX")
-    return f
-}()
-
-let iso8601DateTime: DateFormatter = {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-    f.locale = Locale(identifier: "en_US_POSIX")
-    return f
-}()
 
 func ensureAccess() async throws {
     let status = EKEventStore.authorizationStatus(for: .reminder)
@@ -210,17 +197,6 @@ let allTools = [
 ]
 
 // MARK: - Helpers
-
-func parseDate(_ string: String) -> Date? {
-    if string.count <= 10 {
-        return iso8601DateOnly.date(from: string)
-    }
-    return iso8601DateTime.date(from: string)
-}
-
-func formatDate(_ date: Date) -> String {
-    iso8601DateTime.string(from: date)
-}
 
 func findCalendar(named name: String) -> EKCalendar? {
     store.calendars(for: .reminder).first { $0.title == name }

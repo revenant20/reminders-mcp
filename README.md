@@ -30,3 +30,9 @@ MCP server for Apple Reminders on macOS. Built with Swift and EventKit.
 ```bash
 ./build.sh
 ```
+
+## Test
+
+```bash
+swift test
+```

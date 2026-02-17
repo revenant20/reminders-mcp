@@ -22,12 +22,19 @@ let package = Package(
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.0")
     ],
     targets: [
+        .target(name: "RemindersMCPCore"),
         .executableTarget(
             name: "reminders-mcp",
             dependencies: [
-                .product(name: "MCP", package: "swift-sdk")
+                "RemindersMCPCore",
+                .product(name: "MCP", package: "swift-sdk"),
             ],
-
-        )
+            path: "Sources",
+            exclude: ["RemindersMCPCore"]
+        ),
+        .testTarget(
+            name: "RemindersMCPCoreTests",
+            dependencies: ["RemindersMCPCore"]
+        ),
     ]
 )

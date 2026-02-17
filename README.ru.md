@@ -28,3 +28,9 @@ MCP-сервер для работы с Apple Reminders на macOS. Написа
 ```bash
 ./build.sh
 ```
+
+## Тесты
+
+```bash
+swift test
+```
