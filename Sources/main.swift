@@ -95,6 +95,11 @@ let createReminderTool = Tool(
                 "type": .string("integer"),
                 "description": .string("Priority: 0=none, 1=high, 5=medium, 9=low"),
             ]),
+            "tags": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string("Tags to add (without #). They will be appended as hashtags to notes."),
+            ]),
         ]),
         "required": .array([.string("title")]),
     ])
@@ -131,6 +136,16 @@ let updateReminderTool = Tool(
             "list_name": .object([
                 "type": .string("string"),
                 "description": .string("Move to a different list"),
+            ]),
+            "add_tags": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string("Tags to add (without #). They will be appended as hashtags to notes."),
+            ]),
+            "remove_tags": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string("Tags to remove (without #). Removed from both title and notes."),
             ]),
         ]),
         "required": .array([.string("id")]),
@@ -185,8 +200,12 @@ let searchRemindersTool = Tool(
                 "type": .string("boolean"),
                 "description": .string("Include completed reminders (default: false)"),
             ]),
+            "tag": .object([
+                "type": .string("string"),
+                "description": .string("Filter by tag (without #). Only reminders with this tag are returned."),
+            ]),
         ]),
-        "required": .array([.string("query")]),
+        "required": .array([]),
     ])
 )
 
@@ -222,6 +241,11 @@ func reminderToDict(_ r: EKReminder) -> [String: String] {
     }
     if let completionDate = r.completionDate {
         dict["completion_date"] = formatDate(completionDate)
+    }
+    let allText = [r.title, r.notes].compactMap { $0 }.joined(separator: " ")
+    let tags = parseTags(allText)
+    if !tags.isEmpty {
+        dict["tags"] = tags.joined(separator: ", ")
     }
     return dict
 }
@@ -331,6 +355,13 @@ func handleCreateReminder(_ params: CallTool.Parameters) throws -> CallTool.Resu
         reminder.priority = priority
     }
 
+    if let tagsArray = params.arguments?["tags"]?.arrayValue {
+        let tags = tagsArray.compactMap { $0.stringValue }
+        if !tags.isEmpty {
+            reminder.notes = addTags(tags, to: reminder.notes ?? "")
+        }
+    }
+
     try store.save(reminder, commit: true)
 
     return CallTool.Result(content: [.text(reminderJSON(reminder))])
@@ -372,6 +403,25 @@ func handleUpdateReminder(_ params: CallTool.Parameters) throws -> CallTool.Resu
         } else {
             return CallTool.Result(
                 content: [.text("List '\(listName)' not found")], isError: true)
+        }
+    }
+
+    if let removeTagsArray = params.arguments?["remove_tags"]?.arrayValue {
+        let tags = removeTagsArray.compactMap { $0.stringValue }
+        if !tags.isEmpty {
+            if let title = reminder.title {
+                reminder.title = removeTags(tags, from: title)
+            }
+            if let notes = reminder.notes {
+                reminder.notes = removeTags(tags, from: notes)
+            }
+        }
+    }
+
+    if let addTagsArray = params.arguments?["add_tags"]?.arrayValue {
+        let tags = addTagsArray.compactMap { $0.stringValue }
+        if !tags.isEmpty {
+            reminder.notes = addTags(tags, to: reminder.notes ?? "")
         }
     }
 
@@ -418,21 +468,36 @@ func handleDeleteReminder(_ params: CallTool.Parameters) throws -> CallTool.Resu
 }
 
 func handleSearchReminders(_ params: CallTool.Parameters) async throws -> CallTool.Result {
-    guard let query = params.arguments?["query"]?.stringValue else {
-        throw MCPError.invalidParams("query is required")
-    }
+    let query = params.arguments?["query"]?.stringValue
+    let tag = params.arguments?["tag"]?.stringValue
     let includeCompleted = params.arguments?["include_completed"]?.boolValue ?? false
+
+    guard query != nil || tag != nil else {
+        throw MCPError.invalidParams("query or tag is required")
+    }
 
     let calendars = store.calendars(for: .reminder)
     let reminders = await fetchReminders(
         from: calendars, includeCompleted: true, includeIncomplete: true)
 
-    let lowerQuery = query.lowercased()
     let matched = reminders.filter { r in
-        let titleMatch = r.title?.lowercased().contains(lowerQuery) ?? false
-        let notesMatch = r.notes?.lowercased().contains(lowerQuery) ?? false
         let statusMatch = includeCompleted || !r.isCompleted
-        return (titleMatch || notesMatch) && statusMatch
+        guard statusMatch else { return false }
+
+        if let query, !query.isEmpty {
+            let lowerQuery = query.lowercased()
+            let titleMatch = r.title?.lowercased().contains(lowerQuery) ?? false
+            let notesMatch = r.notes?.lowercased().contains(lowerQuery) ?? false
+            if !titleMatch && !notesMatch { return false }
+        }
+
+        if let tag, !tag.isEmpty {
+            let allText = [r.title, r.notes].compactMap { $0 }.joined(separator: " ")
+            let tags = parseTags(allText).map { $0.lowercased() }
+            if !tags.contains(tag.lowercased()) { return false }
+        }
+
+        return true
     }
 
     let items = matched.map { reminderToDict($0) }
