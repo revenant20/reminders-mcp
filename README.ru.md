@@ -4,6 +4,39 @@
 
 MCP-сервер для работы с Apple Reminders на macOS. Написан на Swift, использует EventKit.
 
+## Установка
+
+### Требования
+
+- macOS 14 (Sonoma) или новее
+- Swift 6.0+
+
+### Сборка
+
+```bash
+git clone https://github.com/revenant20/reminders-mcp.git
+cd reminders-mcp
+./build.sh
+```
+
+Скрипт скомпилирует release-сборку и подпишет бинарник с entitlements для доступа к напоминаниям. Готовый файл: `.build/release/reminders-mcp`.
+
+### Настройка MCP-клиента
+
+Добавьте сервер в конфигурацию вашего MCP-клиента. Например, для Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "reminders": {
+      "command": "/absolute/path/to/reminders-mcp/.build/release/reminders-mcp"
+    }
+  }
+}
+```
+
+При первом запуске macOS запросит разрешение на доступ к напоминаниям — нажмите «Разрешить».
+
 ## Почему этот сервер
 
 - **Нативный Swift-бинарник.** Не нужен Node.js, Python или другой рантайм. Один скомпилированный файл — просто работает.
@@ -97,12 +130,6 @@ Apple Reminders распознаёт хэштеги (`#work`, `#shopping`) в т
 ## Известные ограничения
 
 - **Секции (sections) внутри списков не поддерживаются.** Apple добавила секции в UI Reminders начиная с macOS Sonoma, но не вынесла их в публичный EventKit API. Ждём, когда Apple это сделает.
-
-## Сборка
-
-```bash
-./build.sh
-```
 
 ## Тесты
 
