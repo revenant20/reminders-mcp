@@ -122,15 +122,18 @@ Search reminders by text and/or tag across all lists.
 
 ## Tags
 
-Apple Reminders recognizes hashtags (`#work`, `#shopping`) in reminder text as tags. The server leverages this:
+Tags are stored as hashtags (`#work`, `#shopping`) in the reminder notes field and parsed by the server:
 
 - **Creating** a reminder — the `tags` parameter appends hashtags to notes
 - **Updating** — `add_tags` appends new tags to notes, `remove_tags` removes them from title and notes
 - **Reading** — the `tags` field in the response contains all tags found in title and notes
 - **Searching** — the `tag` parameter filters reminders by tag
 
+> **Note:** These are _not_ native Reminders tags. Apple does not expose tag management in the EventKit API or AppleScript dictionary. Native tags (the colored labels visible in the Reminders sidebar) can only be assigned through the Reminders UI. Tags created by this server are hashtag strings in the notes field — they work for search and filtering through the MCP server but won't appear as native tags in the Reminders app.
+
 ## Known Limitations
 
+- **Tags are not native.** EventKit has no API for native Reminders tags. Tags are stored as `#hashtag` text in notes — fully functional for MCP-based search and filtering, but invisible to the Reminders app tag system. See the [Tags](#tags) section for details.
 - **Sections within lists are not supported.** Apple introduced sections in the Reminders UI starting with macOS Sonoma, but has not exposed them in the public EventKit API. Waiting for Apple to add this.
 
 ## Test
